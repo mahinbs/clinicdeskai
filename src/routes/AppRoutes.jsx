@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import Dashboard from '../pages/Dashboard';
+import AppointmentForm from '../pages/AppointmentForm';
 import Appointments from '../pages/Appointments';
 import Patients from '../pages/Patients';
 import PatientHistory from '../pages/PatientHistory';
@@ -18,6 +19,7 @@ const AppRoutes = () => {
             <Route path="/" element={<LayoutWrapper />}>
                 <Route index element={<Dashboard />} />
                 <Route path="appointments" element={<Appointments />} />
+                <Route path="appointments/new" element={<AppointmentForm />} />
                 <Route path="patients" element={<Patients />} />
                 <Route path="patients/:id" element={<PatientHistory />} />
                 <Route path="revenue" element={<Revenue />} />

@@ -7,46 +7,56 @@ const Badge = ({
     className,
     variant = 'neutral',
     size = 'md',
+    showDot = false,
     ...props
 }) => {
     const variants = {
-        neutral: 'bg-gray-100 text-gray-800',
-        primary: 'bg-blue-100 text-blue-800',
-        success: 'bg-green-100 text-green-800', // Kept minimal, mapped to standard colors if strict map allows, else use blues/grays. strict map says NO additional colors.
-        // Re-evaluating strict colors: "Allowed colors ONLY: Primary accent: blue-700, Background: white / gray-50, etc."
-        // Status usage: Active/Upcoming -> blue-700, Completed/Inactive -> gray-500.
-        // I should strictly follow this.
+        primary: 'bg-primary-500/20 text-primary-300 border-primary-500/30',
+        success: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        warning: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        danger: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+        neutral: 'bg-slate-700/50 text-slate-300 border-slate-600',
+    };
 
-        // STRICT VARIANTS
-        active: 'bg-blue-50 text-blue-700 border border-blue-200',
-        inactive: 'bg-gray-100 text-gray-600 border border-gray-200',
+    const dotColors = {
+        neutral: 'bg-slate-400',
+        primary: 'bg-primary-500',
+        success: 'bg-emerald-500',
+        warning: 'bg-amber-500',
+        danger: 'bg-red-500',
     };
 
     const sizes = {
         sm: 'px-2 py-0.5 text-xs',
-        md: 'px-2.5 py-0.5 text-sm',
+        md: 'px-3 py-1 text-sm',
     };
 
-    // Map common status to strict variants
+    // Fallback for mapped variants from old code
     const getStrictVariant = (v) => {
-        if (['success', 'active', 'upcoming', 'primary'].includes(v)) return variants.active;
-        return variants.inactive;
+        if (['active'].includes(v)) return 'primary';
+        if (['inactive'].includes(v)) return 'neutral';
+        return v;
     };
 
-    const resolvedVariant = variants[variant] || getStrictVariant(variant);
+    const resolvedKey = variants[variant] ? variant : getStrictVariant(variant);
+    const resolvedClass = variants[resolvedKey] || variants.neutral;
+    const resolvedDotColor = dotColors[resolvedKey] || dotColors.neutral;
 
     return (
         <span
             className={twMerge(
                 clsx(
-                    "inline-flex items-center font-medium rounded-full",
-                    resolvedVariant,
+                    "inline-flex items-center font-medium rounded-full shadow-sm",
+                    resolvedClass,
                     sizes[size],
                     className
                 )
             )}
             {...props}
         >
+            {showDot && (
+                <span className={clsx("w-1.5 h-1.5 rounded-full mr-1.5", resolvedDotColor)} />
+            )}
             {children}
         </span>
     );
