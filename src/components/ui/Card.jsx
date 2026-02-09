@@ -6,13 +6,13 @@ const Card = ({ children, title, className, padding = "p-6", noPadding = false, 
     return (
         <div className={twMerge(
             clsx(
-                'glass-card rounded-2xl relative overflow-hidden',
+                'bg-white rounded-xl border border-gray-200 shadow-sm',
                 className
             )
         )}>
             {title && (
-                <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
-                    <h3 className="font-heading font-semibold text-lg text-slate-100 tracking-wide text-gradient">
+                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-semibold text-lg text-gray-900">
                         {title}
                     </h3>
                     {actions && <div className="flex gap-2">{actions}</div>}

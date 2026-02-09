@@ -15,14 +15,14 @@ const Button = ({
     type = 'button',
     ...props
 }) => {
-    const baseStyles = 'inline-flex items-center justify-center rounded-full font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-sm';
+    const baseStyles = 'inline-flex items-center justify-center rounded-full font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-sm cursor-pointer';
 
     const variants = {
-        primary: 'bg-gradient-to-r from-primary-500 to-accent-cyan text-white hover:shadow-neon hover:brightness-110 border-0',
-        secondary: 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white',
-        outline: 'border-2 border-primary-500 text-primary-400 hover:bg-primary-500/10',
-        ghost: 'text-slate-400 hover:bg-slate-800 hover:text-primary-400 shadow-none',
-        danger: 'bg-gradient-to-r from-red-500 to-rose-600 text-white hover:shadow-lg hover:shadow-red-500/30',
+        primary: 'bg-teal-600 text-white hover:bg-teal-700 border border-transparent shadow-sm hover:shadow-md',
+        secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500',
+        outline: 'border-2 border-teal-600 text-teal-700 hover:bg-teal-50',
+        ghost: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 shadow-none',
+        danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm hover:shadow-md border border-transparent',
     };
 
     const sizes = {

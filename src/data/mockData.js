@@ -41,3 +41,25 @@ export const revenueData = [
     { id: 4, date: "Oct 25, 2023", amount: "$300.00", patient: "Sophia Patel", method: "Credit Card" },
     { id: 5, date: "Oct 24, 2023", amount: "$120.00", patient: "William Turner", method: "Debit Card" },
 ];
+
+export const clinics = [
+    { id: 1, name: "City Health Clinic", location: "New York, NY", doctorCount: 12, active: true },
+    { id: 2, name: "Westside Family Practice", location: "Los Angeles, CA", doctorCount: 8, active: true },
+    { id: 3, name: "Oakwood Pediatrics", location: "Chicago, IL", doctorCount: 5, active: true },
+    { id: 4, name: "Sunnyvale Urgent Care", location: "Sunnyvale, CA", doctorCount: 15, active: false },
+    { id: 5, name: "Mountain View Cardiology", location: "Denver, CO", doctorCount: 6, active: true },
+];
+
+export const users = [
+    { id: 1, name: "Dr. Sarah Mitchell", role: "Doctor", clinic: "City Health Clinic", status: "Active" },
+    { id: 2, name: "John Doe", role: "Receptionist", clinic: "City Health Clinic", status: "Active" },
+    { id: 3, name: "Dr. Emily Blunt", role: "Doctor", clinic: "Westside Family Practice", status: "Inactive" },
+    { id: 4, name: "Alice Smith", role: "Receptionist", clinic: "Westside Family Practice", status: "Active" },
+];
+
+export const tokens = [
+    { id: 1, number: "A-101", patient: "Emma Wilson", status: "In Consultation", doctor: "Dr. Sarah Mitchell", estimatedWait: "0 min" },
+    { id: 2, number: "A-102", patient: "James Rodriguez", status: "Waiting", doctor: "Dr. Sarah Mitchell", estimatedWait: "15 min" },
+    { id: 3, number: "B-201", patient: "Michael Chang", status: "Waiting", doctor: "Dr. Emily Blunt", estimatedWait: "30 min" },
+    { id: 4, number: "A-103", patient: "Sophia Patel", status: "Completed", doctor: "Dr. Sarah Mitchell", estimatedWait: "-" },
+];

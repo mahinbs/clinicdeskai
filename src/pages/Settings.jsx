@@ -9,11 +9,11 @@ const Settings = () => {
     return (
         <div className="max-w-3xl space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Settings</h1>
-                <p className="text-sm text-slate-400 mt-1">Manage your account and preferences</p>
+                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Settings</h1>
+                <p className="text-sm text-gray-500 mt-1">Manage your account and preferences</p>
             </div>
 
-            <Card title="Profile Information" className="bg-slate-900/40 backdrop-blur-md border border-white/10">
+            <Card title="Profile Information" className="bg-white border-gray-200">
                 <form className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Input
@@ -31,7 +31,7 @@ const Settings = () => {
                         type="email"
                         defaultValue={currentUser.email}
                         disabled
-                        className="bg-slate-800 text-slate-400 cursor-not-allowed border-slate-700/50 focus:ring-0 px-3"
+                        className="bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200 focus:ring-0 px-3"
                     />
                     <div className="pt-2 flex justify-end">
                         <Button variant="primary" icon={Save}>Save Changes</Button>
@@ -39,7 +39,7 @@ const Settings = () => {
                 </form>
             </Card>
 
-            <Card title="Security" className="bg-slate-900/40 backdrop-blur-md border border-white/10">
+            <Card title="Security" className="bg-white border-gray-200">
                 <form className="space-y-4">
                     <Input
                         label="Current Password"
@@ -67,7 +67,7 @@ const Settings = () => {
                 </form>
             </Card>
 
-            <div className="pt-4 border-t border-slate-800">
+            <div className="pt-4 border-t border-gray-200">
                 <Button variant="danger" fullWidth icon={LogOut}>
                     Log Out of All Sessions
                 </Button>

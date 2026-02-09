@@ -16,7 +16,7 @@ const Input = ({
             {label && (
                 <label
                     htmlFor={id}
-                    className="block text-sm font-semibold text-slate-500 mb-1.5"
+                    className="block text-sm font-semibold text-gray-700 mb-1.5"
                 >
                     {label}
                 </label>
@@ -32,11 +32,11 @@ const Input = ({
                     type={type}
                     className={twMerge(
                         clsx(
-                            'block w-full py-3 rounded-xl border-slate-700 bg-slate-900/50 text-slate-100 placeholder-slate-500',
-                            'focus:border-primary-500 focus:ring-primary-500/20 focus:ring-4 focus:outline-none transition-all duration-300',
+                            'block w-full py-3 px-3 rounded-xl border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-500',
+                            'focus:border-teal-500 focus:ring-teal-500/20 focus:ring-4 focus:outline-none focus:bg-white transition-all duration-300',
                             Icon && 'pl-10',
                             error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20 animate-shake',
-                            props.disabled && 'bg-slate-800 text-slate-500 cursor-not-allowed',
+                            props.disabled && 'bg-gray-100 text-gray-500 cursor-not-allowed',
                             className
                         )
                     )}

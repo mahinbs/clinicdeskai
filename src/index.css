@@ -1,65 +1,49 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=SN+Pro:ital,wght@0,200..900;1,200..900&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&display=swap');
 
 @theme {
-  /* Fonts */
-  --font-heading: 'Ubuntu', sans-serif;
-  --font-body: 'Ubuntu', sans-serif;
+  --font-sans: "Source Sans 3", system-ui, sans-serif;
 
-  /* Colors - Primary (Blue) */
-  --color-primary-50: var(--color-blue-50);
-  --color-primary-100: var(--color-blue-100);
-  --color-primary-200: var(--color-blue-200);
-  --color-primary-300: var(--color-blue-300);
-  --color-primary-400: var(--color-blue-400);
-  --color-primary-500: var(--color-blue-500);
-  --color-primary-600: var(--color-blue-600);
-  --color-primary-700: var(--color-blue-700);
-  --color-primary-800: var(--color-blue-800);
-  --color-primary-900: var(--color-blue-900);
-  --color-primary-950: var(--color-blue-950);
+  /* Re-mapping Blue variables to Teal to catch any missed hardcoded 'blue' classes if I leave them, 
+     but better to rename them to primary or usage specific names. 
+     For now, I will explicitly define the palette I want to use and replace usages. */
+  
+  --color-primary-50: #f0fdfa; /* teal-50 */
+  --color-primary-100: #ccfbf1; /* teal-100 */
+  --color-primary-200: #99f6e4; /* teal-200 */
+  --color-primary-500: #14b8a6; /* teal-500 */
+  --color-primary-600: #0d9488; /* teal-600 */
+  --color-primary-700: #0f766e; /* teal-700 */
+  --color-primary-800: #115e59; /* teal-800 */
+  --color-primary-900: #134e4a; /* teal-900 */
 
-  /* Colors - Accent (Cyan) */
-  --color-accent-50: var(--color-cyan-50);
-  --color-accent-100: var(--color-cyan-100);
-  --color-accent-400: var(--color-cyan-400);
-  --color-accent-500: var(--color-cyan-500);
-  --color-accent-cyan: var(--color-cyan-500);
-
-  /* Colors - Custom */
-  --color-bg-app: #0f172a; /* Slate 950 */
+  /* Gray Scale (Light Theme) */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
 }
 
 @layer base {
   body {
-    @apply font-body antialiased bg-slate-950 text-slate-100;
-    background-image: 
-      radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
-    background-attachment: fixed;
+    @apply font-sans bg-gray-50 text-gray-900 antialiased;
   }
 }
 
 @layer utilities {
-  .glass-panel {
-    @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl;
+  .card-shadow {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   }
   
-  .glass-card {
-    @apply bg-slate-900/40 backdrop-blur-lg border border-white/10 shadow-lg hover:bg-slate-800/50 transition-all duration-300;
-  }
-
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-accent-400;
-  }
-
-  /* Keyframes for animations often found in the app */
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-    20%, 40%, 60%, 80% { transform: translateX(2px); }
-  }
-  .animate-shake {
-    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-  }
+  /* Utility for primary text/bg to help with refactoring */
+  .text-primary { @apply text-[var(--color-primary-700)]; }
+  .bg-primary { @apply bg-[var(--color-primary-700)]; }
+  .bg-primary-light { @apply bg-[var(--color-primary-50)]; }
+  .border-primary { @apply border-[var(--color-primary-700)]; }
 }
