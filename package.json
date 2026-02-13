@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "create-master-admin": "node scripts/create-master-admin.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
     "@tailwindcss/postcss": "^4.1.18",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",

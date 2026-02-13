@@ -1,0 +1,7 @@
+# Edge Functions: skip gateway JWT check so our functions can validate the token themselves.
+# Both create-user and reset-user-password read the Authorization header and validate the caller inside the function.
+[functions.create-user]
+verify_jwt = false
+
+[functions.reset-user-password]
+verify_jwt = false
