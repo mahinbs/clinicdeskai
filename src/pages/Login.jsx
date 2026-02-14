@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Stethoscope, Activity, ShieldCheck } from 'lucide-react';
 import Button from '../components/ui/Button';
@@ -14,13 +14,30 @@ const ROLES = [
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signOut, loading, error, defaultRoute } = useAuth();
+  const { signIn, signOut, loading, error, defaultRoute, isAuthenticated, profile } = useAuth();
   const [selectedRole, setSelectedRole] = useState('doctor');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState('');
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
+
+  // If already logged in (staff role), always show their portal — redirect to their default route
+  useEffect(() => {
+    if (loading || !profile) return;
+    if (isAuthenticated && profile.role !== 'master_admin') {
+      navigate(defaultRoute, { replace: true });
+    }
+  }, [loading, isAuthenticated, profile, defaultRoute, navigate]);
+
+  // Don't show login form while redirecting already logged-in user to their portal
+  if (!loading && isAuthenticated && profile && profile.role !== 'master_admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-600" />
+      </div>
+    );
+  }
 
   const from = location.state?.from?.pathname || defaultRoute || '/doctor';
 
@@ -34,12 +51,17 @@ const Login = () => {
     setSubmitting(true);
     try {
       const { profile } = await signIn(email.trim(), password);
-      if (profile?.role === 'master_admin') {
+      // If profile failed to load, don't enforce role check (but user won't be able to proceed anyway)
+      if (!profile) {
+        setLocalError('Failed to load your profile. Please try again or contact support.');
+        return;
+      }
+      if (profile.role === 'master_admin') {
         await signOut();
         setLocalError('Use Master Admin login for this account.');
         return;
       }
-      if (profile?.role !== selectedRole) {
+      if (profile.role !== selectedRole) {
         await signOut();
         const roleLabel = ROLES.find((r) => r.id === selectedRole)?.label ?? selectedRole;
         setLocalError(`This login is for ${roleLabel} only. Your account is not a ${roleLabel}.`);

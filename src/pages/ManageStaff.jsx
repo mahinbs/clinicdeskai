@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
-import { UserPlus, Mail, Phone, Save, Stethoscope, ClipboardList, Check, Copy, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Mail, Phone, Save, Stethoscope, ClipboardList, Check, Copy, X, DollarSign } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import { useAuth } from '../context/AuthContext';
-import { createUser } from '../utils/database';
+import { createUser, getClinicDoctorsWithSettings, setDoctorConsultationFee } from '../utils/database';
 
 const ManageStaff = () => {
     const { profile } = useAuth();
     const [role, setRole] = useState('doctor');
+    const [doctorsWithFees, setDoctorsWithFees] = useState([]);
+    const [doctorsLoading, setDoctorsLoading] = useState(true);
+    const [feeEdits, setFeeEdits] = useState({});
+    const [savingFeeFor, setSavingFeeFor] = useState(null);
+    const [feeError, setFeeError] = useState('');
     const currentYear = new Date().getFullYear();
     const yearOptions = Array.from({ length: currentYear - 1980 + 1 }, (_, i) => currentYear - i);
     const [formData, setFormData] = useState({
@@ -80,25 +85,120 @@ const ManageStaff = () => {
         }
     };
 
+    const clinicId = profile?.clinic_id;
+    useEffect(() => {
+        if (!clinicId) return;
+        let mounted = true;
+        setDoctorsLoading(true);
+        getClinicDoctorsWithSettings(clinicId)
+            .then((list) => { if (mounted) setDoctorsWithFees(list); })
+            .catch(() => { if (mounted) setDoctorsWithFees([]); })
+            .finally(() => { if (mounted) setDoctorsLoading(false); });
+        return () => { mounted = false; };
+    }, [clinicId]);
+
+    const handleFeeChange = (doctorId, value) => {
+        setFeeEdits((prev) => ({ ...prev, [doctorId]: value }));
+        setFeeError('');
+    };
+
+    const handleSaveFee = async (doctorId) => {
+        const raw = feeEdits[doctorId] ?? doctorsWithFees.find((d) => d.id === doctorId)?.consultation_fee ?? 0;
+        const num = Math.max(0, parseFloat(String(raw).replace(/,/g, '')) || 0);
+        setSavingFeeFor(doctorId);
+        setFeeError('');
+        try {
+            await setDoctorConsultationFee(doctorId, clinicId, num);
+            setDoctorsWithFees((prev) => prev.map((d) => (d.id === doctorId ? { ...d, consultation_fee: num } : d)));
+            setFeeEdits((prev) => ({ ...prev, [doctorId]: undefined }));
+        } catch (err) {
+            setFeeError(err.message || 'Failed to save fee');
+        } finally {
+            setSavingFeeFor(null);
+        }
+    };
+
     return (
         <div className="max-w-6xl space-y-8">
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Add New Staff Member</h1>
-                <p className="text-gray-500 mt-2">Onboard a new Doctor or Receptionist to your clinic</p>
+                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Staff & doctor fees</h1>
+                <p className="text-gray-500 mt-2">Set consultation fees for doctors and add new staff</p>
             </div>
 
-            {error && (
-                <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-                    {error}
+            {/* Doctor consultation fees — set by clinic admin; used when creating invoices */}
+            <Card className="shadow-lg border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-teal-50 to-white px-8 py-6 border-b border-gray-100">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-teal-600" />
+                        Doctor consultation fees
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">Set each doctor’s fee. This is used when creating invoices for completed consultations.</p>
                 </div>
-            )}
+                <div className="p-6">
+                    {feeError && (
+                        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{feeError}</div>
+                    )}
+                    {doctorsLoading ? (
+                        <div className="flex justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-600" />
+                        </div>
+                    ) : doctorsWithFees.length === 0 ? (
+                        <p className="text-gray-500 text-center py-6">No doctors in this clinic yet. Add a doctor below, then set their fee here.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-gray-200 text-gray-600 text-sm font-medium">
+                                        <th className="pb-3 pr-4">Doctor</th>
+                                        <th className="pb-3 pr-4">Specialization</th>
+                                        <th className="pb-3 pr-4">Consultation fee (₹)</th>
+                                        <th className="pb-3 w-24" />
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {doctorsWithFees.map((d) => (
+                                        <tr key={d.id} className="align-middle">
+                                            <td className="py-3 pr-4 font-medium text-gray-900">{d.full_name}</td>
+                                            <td className="py-3 pr-4 text-gray-600">{d.specialization || '—'}</td>
+                                            <td className="py-3 pr-4">
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    step={50}
+                                                    className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                                                    value={feeEdits[d.id] !== undefined ? feeEdits[d.id] : d.consultation_fee}
+                                                    onChange={(e) => handleFeeChange(d.id, e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="py-3">
+                                                <Button
+                                                    size="sm"
+                                                    variant="primary"
+                                                    onClick={() => handleSaveFee(d.id)}
+                                                    disabled={savingFeeFor === d.id}
+                                                >
+                                                    {savingFeeFor === d.id ? 'Saving...' : 'Save'}
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </Card>
 
             <Card className="shadow-xl border-gray-100 overflow-hidden">
                 <div className="bg-gradient-to-r from-gray-50 to-white px-8 py-6 border-b border-gray-100">
-                    <h2 className="text-lg font-bold text-gray-900">Staff Profile Details</h2>
-                    <p className="text-sm text-gray-500">All fields are required for account creation</p>
+                    <h2 className="text-lg font-bold text-gray-900">Add New Staff Member</h2>
+                    <p className="text-sm text-gray-500">Onboard a new Doctor or Receptionist to your clinic</p>
                 </div>
-
+                {error && (
+                    <div className="mx-8 mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                        {error}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="p-8 space-y-8">
                     {/* Role Selection */}
                     <div>

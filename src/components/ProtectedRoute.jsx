@@ -1,10 +1,13 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getDefaultRoute } from '../utils/auth';
 
 /**
- * Protects routes that require authentication.
- * Redirects to loginPath (or /login) if not authenticated; to /login if wrong role.
+ * Protects routes that require authentication and the correct role.
+ * - Not logged in → redirect to loginPath (or /login).
+ * - Wrong role (e.g. doctor on /master) → redirect to that user's portal, not login.
+ * - One role cannot access another role's portal.
  */
 export default function ProtectedRoute({ children, allowedRoles, loginPath = '/login' }) {
   const { isAuthenticated, profile, loading } = useAuth();
@@ -27,8 +30,9 @@ export default function ProtectedRoute({ children, allowedRoles, loginPath = '/l
     return <Navigate to="/change-password" replace />;
   }
 
+  // Wrong role: redirect to their own portal so they never see another role's area.
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(profile.role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={getDefaultRoute(profile)} replace />;
   }
 
   return children;

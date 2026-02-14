@@ -19,6 +19,7 @@ const Sidebar = ({ onClose }) => {
     clinic_admin: [
       { icon: LayoutDashboard, label: 'Clinic Dashboard', path: '/clinic', end: true },
       { icon: Users, label: 'Manage Staff', path: '/clinic/staff' },
+      { icon: DollarSign, label: 'Revenue', path: '/clinic/revenue' },
       { icon: Settings, label: 'Clinic Settings', path: '/clinic/settings' },
     ],
     receptionist: [
@@ -28,6 +29,7 @@ const Sidebar = ({ onClose }) => {
     ],
     doctor: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/doctor', end: true },
+      { icon: Activity, label: 'My Queue', path: '/doctor/queue' },
       { icon: Calendar, label: 'Appointments', path: '/doctor/appointments' },
       { icon: Users, label: 'Patients', path: '/doctor/patients' },
       { icon: FileText, label: 'Prescriptions', path: '/doctor/prescriptions' },

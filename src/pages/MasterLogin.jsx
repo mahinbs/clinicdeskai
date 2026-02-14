@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
+import { getDefaultRoute } from '../utils/auth';
 
 const MasterLogin = () => {
   const navigate = useNavigate();
@@ -13,16 +14,20 @@ const MasterLogin = () => {
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState('');
 
-  // If already logged in as master admin, force redirect to master dashboard (ignore URL)
+  // If already logged in: master → /master; any other role → their portal (they can't use master login)
   useEffect(() => {
     if (loading || !profile) return;
-    if (isAuthenticated && profile?.role === 'master_admin') {
-      navigate('/master', { replace: true });
+    if (isAuthenticated) {
+      if (profile.role === 'master_admin') {
+        navigate('/master', { replace: true });
+      } else {
+        navigate(getDefaultRoute(profile), { replace: true });
+      }
     }
   }, [loading, isAuthenticated, profile, navigate]);
 
-  // Don't show login form while redirecting logged-in master admin
-  if (!loading && isAuthenticated && profile?.role === 'master_admin') {
+  // Don't show login form while redirecting logged-in user
+  if (!loading && isAuthenticated && profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-600" />
@@ -40,7 +45,11 @@ const MasterLogin = () => {
     setSubmitting(true);
     try {
       const { profile } = await signIn(email.trim(), password);
-      if (profile?.role !== 'master_admin') {
+      if (!profile) {
+        setLocalError('Failed to load your profile. Please try again or contact support.');
+        return;
+      }
+      if (profile.role !== 'master_admin') {
         await signOut();
         setLocalError('This login is for Master Admin only. Use the main login for Clinic Admin, Doctor, or Receptionist.');
         return;

@@ -340,12 +340,12 @@ const Settings = () => {
       ? `${profile.experience_years} years`
       : '—';
 
-  return (
-    <div className="max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage your account and preferences</p>
-      </div>
+    return (
+        <div className="max-w-3xl space-y-8">
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Settings</h1>
+                <p className="text-sm text-gray-500 mt-1">Manage your account and preferences</p>
+            </div>
 
       {isClinicAdmin && (
         <Card title="Clinic Schedule" className="bg-white border-gray-200">
@@ -655,40 +655,40 @@ const Settings = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input label="Full Name" defaultValue={profile?.full_name || ''} icon={User} disabled className="bg-gray-50" />
             <Input label="Clinic" defaultValue={profile?.clinic?.name || '—'} disabled className="bg-gray-50" />
-          </div>
-          <Input
-            label="Email Address"
-            type="email"
+                    </div>
+                    <Input
+                        label="Email Address"
+                        type="email"
             defaultValue={profile?.email || ''}
-            disabled
-            className="bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200 focus:ring-0 px-3"
-          />
-          <div className="pt-2 flex justify-end">
+                        disabled
+                        className="bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200 focus:ring-0 px-3"
+                    />
+                    <div className="pt-2 flex justify-end">
             <Button variant="primary" icon={Save} disabled type="submit">Save Changes</Button>
-          </div>
-        </form>
-      </Card>
+                    </div>
+                </form>
+            </Card>
 
-      <Card title="Security" className="bg-white border-gray-200">
+            <Card title="Security" className="bg-white border-gray-200">
         <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
           <Input label="Current Password" type="password" placeholder="••••••••" icon={Lock} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input label="New Password" type="password" placeholder="••••••••" icon={Lock} />
             <Input label="Confirm New Password" type="password" placeholder="••••••••" icon={Lock} />
-          </div>
-          <div className="pt-2 flex justify-end">
+                    </div>
+                    <div className="pt-2 flex justify-end">
             <Button variant="secondary" icon={Save} type="submit" disabled>Update Password</Button>
-          </div>
-        </form>
-      </Card>
+                    </div>
+                </form>
+            </Card>
 
-      <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-gray-200">
         <Button variant="danger" fullWidth icon={LogOut} onClick={handleLogout}>
-          Log Out of All Sessions
-        </Button>
-      </div>
-    </div>
-  );
+                    Log Out of All Sessions
+                </Button>
+            </div>
+        </div>
+    );
 };
 
 export default Settings;

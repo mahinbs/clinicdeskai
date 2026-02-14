@@ -203,6 +203,7 @@ const ManageClinics = () => {
             onChange={(e) => setAddress(e.target.value)}
           />
 
+          {/* Clinic branding - commented out
           <div className="pt-4 border-t border-gray-100">
             <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
               <Image className="w-4 h-4" /> Clinic branding
@@ -291,6 +292,7 @@ const ManageClinics = () => {
               </div>
             </div>
           </div>
+          */}
 
           <div className="pt-4 border-t border-gray-100">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Admin Account</h3>

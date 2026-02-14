@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadProfile = async (userId, timeoutMs = 5000) => {
+  const loadProfile = async (userId, timeoutMs = 15000) => {
     if (!userId) {
       setProfile(null);
       return null;
@@ -29,8 +29,9 @@ export function AuthProvider({ children }) {
       console.error('Failed to load profile:', err);
       setProfile(null);
       setError(err.message);
-      // If profile fails, the session is likely invalid → sign out
-      if (err.message?.includes('timed out') || err.message?.includes('JWT')) {
+      // If profile fails due to timeout or JWT, don't auto-signout on first load
+      // (could be slow network). Only sign out if it's a clear auth error.
+      if (err.message?.includes('JWT') && !err.message?.includes('timed out')) {
         console.warn('Invalid session detected, signing out');
         await supabase.auth.signOut();
         setUser(null);
@@ -51,11 +52,9 @@ export function AuthProvider({ children }) {
 
         if (session?.user) {
           setUser(session.user);
-          const profile = await loadProfile(session.user.id);
-          // If profile failed to load, clear the session
-          if (!profile && isMounted) {
-            setUser(null);
-          }
+          await loadProfile(session.user.id);
+          // Keep user logged in even if profile fails to load
+          // (they'll see an error but won't be auto-logged-out)
         } else {
           setUser(null);
           setProfile(null);

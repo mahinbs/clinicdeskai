@@ -234,13 +234,14 @@ export const getPatientById = async (patientId) => {
   return data;
 };
 
-export const searchPatients = async (searchTerm) => {
-  const { data, error } = await supabase
+export const searchPatients = async (searchTerm, clinicId = null) => {
+  let q = supabase
     .from('patients')
     .select('*')
     .or(`full_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,patient_id_number.ilike.%${searchTerm}%`)
     .limit(20);
-
+  if (clinicId) q = q.eq('clinic_id', clinicId);
+  const { data, error } = await q;
   if (error) throw error;
   return data;
 };
@@ -318,13 +319,16 @@ export const getAppointmentsByDate = async (doctorId, date) => {
 };
 
 export const getAvailableSlots = async (doctorId, date) => {
+  // Ensure YYYY-MM-DD so Postgres DATE is unambiguous
+  const dateStr = date && date.includes('-') ? date.slice(0, 10) : null;
+  if (!dateStr) return [];
   const { data, error } = await supabase.rpc('get_available_slots', {
     p_doctor_id: doctorId,
-    p_date: date,
+    p_date: dateStr,
   });
 
   if (error) throw error;
-  return data;
+  return data ?? [];
 };
 
 export const createAppointment = async (appointmentData) => {
@@ -354,6 +358,186 @@ export const updateAppointmentStatus = async (appointmentId, status, notes = nul
     .select()
     .single();
 
+  if (error) throw error;
+  return data;
+};
+
+/** Reassign appointment to another doctor (and optionally new time slot). Used when doctor is on leave. */
+export const updateAppointmentDoctor = async (appointmentId, clinicId, { doctor_id, time_slot }) => {
+  const updates = { updated_at: new Date().toISOString(), ...(doctor_id && { doctor_id }), ...(time_slot && { time_slot }) };
+  const { data, error } = await supabase
+    .from('appointments')
+    .update(updates)
+    .eq('id', appointmentId)
+    .eq('clinic_id', clinicId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+/** Appointments (today and future, up to 7 days) where the doctor is on leave. Reception can reassign to another doctor. */
+export const getAppointmentsAffectedByDoctorLeave = async (clinicId) => {
+  const today = new Date().toISOString().split('T')[0];
+  const future = new Date();
+  future.setDate(future.getDate() + 7);
+  const endDate = future.toISOString().split('T')[0];
+  const [{ data: holidays }, { data: appointments }] = await Promise.all([
+    supabase.from('doctor_holidays').select('doctor_id, date').eq('clinic_id', clinicId).gte('date', today).lte('date', endDate),
+    supabase.from('appointments').select(`
+      id, appointment_date, time_slot, status,
+      patient:patients(id, full_name, phone),
+      doctor:users!appointments_doctor_id_fkey(id, full_name, specialization)
+    `).eq('clinic_id', clinicId).gte('appointment_date', today).lte('appointment_date', endDate).neq('status', 'cancelled'),
+  ]);
+  const leaveSet = new Set((holidays || []).map((h) => `${h.doctor_id}|${h.date}`));
+  return (appointments || []).filter((a) => leaveSet.has(`${a.doctor_id}|${a.appointment_date}`));
+};
+
+/** Create invoice (billing) after patient is done. Uses doctor's consultation fee. */
+export const createBillingForCompletedAppointment = async (appointmentId) => {
+  const { data: apt, error: aptErr } = await supabase
+    .from('appointments')
+    .select('id, clinic_id, patient_id, doctor_id')
+    .eq('id', appointmentId)
+    .single();
+  if (aptErr || !apt) throw new Error('Appointment not found');
+  const consultationFee = await getDoctorConsultationFee(apt.doctor_id);
+  const billingData = {
+    clinic_id: apt.clinic_id,
+    patient_id: apt.patient_id,
+    appointment_id: apt.id,
+    consultation_fee: consultationFee,
+    medication_charges: 0,
+    discount: 0,
+    total_amount: consultationFee,
+    payment_mode: 'cash',
+    status: 'pending',
+  };
+  return createBilling(billingData);
+};
+
+/** Today's collection by doctor: fee per doctor and total to collect. For receptionist. */
+export const getTodayCollectionByDoctor = async (clinicId) => {
+  const today = new Date().toISOString().split('T')[0];
+  const nextDay = new Date(new Date(today).getTime() + 86400000).toISOString().split('T')[0];
+  const [doctorsWithFee, completedApts, billings] = await Promise.all([
+    getClinicDoctorsWithSettings(clinicId),
+    supabase.from('appointments').select('id, doctor_id').eq('clinic_id', clinicId).eq('appointment_date', today).eq('status', 'completed'),
+    supabase.from('billing').select('appointment_id, total_amount, status').eq('clinic_id', clinicId).gte('created_at', today + 'T00:00:00Z').lt('created_at', nextDay + 'T00:00:00Z'),
+  ]);
+  const aptIds = (completedApts.data || []).map((a) => a.id);
+  const byAppointment = (billings.data || []).reduce((acc, b) => {
+    if (b.appointment_id) acc[b.appointment_id] = (acc[b.appointment_id] || 0) + Number(b.total_amount || 0);
+    return acc;
+  }, {});
+  const byDoctor = {};
+  (completedApts.data || []).forEach((a) => {
+    const did = a.doctor_id;
+    if (!byDoctor[did]) byDoctor[did] = { count: 0, total: 0 };
+    byDoctor[did].count += 1;
+    byDoctor[did].total += byAppointment[a.id] ?? 0;
+  });
+  return (doctorsWithFee || []).map((d) => {
+    const count = byDoctor[d.id]?.count ?? 0;
+    const fee = Number(d.consultation_fee || 0);
+    return {
+      doctor_id: d.id,
+      doctor_name: d.full_name,
+      consultation_fee: fee,
+      completed_today: count,
+      total_to_collect: byDoctor[d.id]?.total ?? 0,
+      expected_from_fee: count * fee,
+    };
+  });
+};
+
+/** Today's appointments for reception: list with patient, doctor, time, token. Excludes cancelled. */
+export const getTodayAppointmentsForReception = async (clinicId) => {
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('appointments')
+    .select(`
+      id, appointment_date, time_slot, token_number, status,
+      patient:patients(id, full_name, phone),
+      doctor:users!appointments_doctor_id_fkey(id, full_name, specialization)
+    `)
+    .eq('clinic_id', clinicId)
+    .eq('appointment_date', today)
+    .neq('status', 'cancelled')
+    .order('time_slot');
+  if (error) throw error;
+  return data || [];
+};
+
+/** Next token number for today. Per doctor: pass doctorId so each doctor has their own queue (1, 2, 3…). */
+export const getNextTokenForToday = async (clinicId, doctorId) => {
+  const today = new Date().toISOString().split('T')[0];
+  let q = supabase
+    .from('appointments')
+    .select('token_number')
+    .eq('clinic_id', clinicId)
+    .eq('appointment_date', today)
+    .not('token_number', 'is', null);
+  if (doctorId) q = q.eq('doctor_id', doctorId);
+  const { data, error } = await q;
+  if (error) throw error;
+  const max = (data || []).reduce((m, r) => Math.max(m, r.token_number || 0), 0);
+  return max + 1;
+};
+
+/** Assign queue token to an appointment (check-in). Token is per doctor. Use next for that doctor unless preferredToken provided. */
+export const checkInAppointment = async (appointmentId, clinicId, preferredToken = null) => {
+  const { data: apt, error: aptErr } = await supabase.from('appointments').select('doctor_id').eq('id', appointmentId).single();
+  if (aptErr || !apt?.doctor_id) throw new Error('Appointment not found');
+  const token = preferredToken != null && preferredToken > 0 ? Number(preferredToken) : await getNextTokenForToday(clinicId, apt.doctor_id);
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({ token_number: token, updated_at: new Date().toISOString() })
+    .eq('id', appointmentId)
+    .eq('clinic_id', clinicId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+/** Call in a patient: set to with_doctor and auto-complete any other appointment with_doctor for the same doctor (same day). */
+export const callInAppointment = async (appointmentId) => {
+  const { data: apt, error: aptErr } = await supabase
+    .from('appointments')
+    .select('id, doctor_id, clinic_id, appointment_date')
+    .eq('id', appointmentId)
+    .single();
+  if (aptErr || !apt) throw new Error('Appointment not found');
+  const today = apt.appointment_date;
+  const { data: others } = await supabase
+    .from('appointments')
+    .select('id')
+    .eq('clinic_id', apt.clinic_id)
+    .eq('doctor_id', apt.doctor_id)
+    .eq('appointment_date', today)
+    .eq('status', 'with_doctor')
+    .neq('id', appointmentId);
+  for (const row of others || []) {
+    await updateAppointmentStatus(row.id, 'completed');
+    try { await createBillingForCompletedAppointment(row.id); } catch (_) {}
+  }
+  await updateAppointmentStatus(appointmentId, 'with_doctor');
+  const { data: updated } = await supabase.from('appointments').select('*').eq('id', appointmentId).single();
+  return updated;
+};
+
+/** Receptionist sets a specific queue number for an appointment (today). */
+export const setAppointmentQueueNumber = async (appointmentId, clinicId, tokenNumber) => {
+  const num = Math.max(1, Math.floor(Number(tokenNumber)));
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({ token_number: num, updated_at: new Date().toISOString() })
+    .eq('id', appointmentId)
+    .eq('clinic_id', clinicId)
+    .select()
+    .single();
   if (error) throw error;
   return data;
 };
@@ -390,6 +574,8 @@ export const createPrescription = async (prescriptionData) => {
 // ============================================================================
 // BILLING OPERATIONS
 // ============================================================================
+// When creating billing/invoice for an appointment, set consultation_fee from the doctor's
+// fee (set by clinic admin): use getDoctorConsultationFee(appointment.doctor_id).
 
 export const createBilling = async (billingData) => {
   const { data, error } = await supabase
@@ -531,7 +717,44 @@ export const getDoctorSettings = async (doctorId) => {
   return data;
 };
 
+/** Consultation fee for a doctor at a clinic (set by clinic admin). Use when creating billing/invoice. */
+export const getDoctorConsultationFee = async (doctorId) => {
+  const settings = await getDoctorSettings(doctorId);
+  return settings?.consultation_fee != null ? Number(settings.consultation_fee) : 0;
+};
+
+/** List doctors in a clinic with their settings (including consultation_fee). Includes role=doctor and clinic_admin who is also doctor (is_also_doctor). */
+export const getClinicDoctorsWithSettings = async (clinicId) => {
+  const [doctorsRes, adminDoctorsRes] = await Promise.all([
+    supabase.from('users').select('id, full_name, email, specialization, role').eq('clinic_id', clinicId).eq('role', 'doctor').eq('status', 'active').order('full_name'),
+    supabase.from('users').select('id, full_name, email, specialization, role').eq('clinic_id', clinicId).eq('role', 'clinic_admin').eq('is_also_doctor', true).eq('status', 'active').order('full_name'),
+  ]);
+  if (doctorsRes.error) throw doctorsRes.error;
+  if (adminDoctorsRes.error) throw adminDoctorsRes.error;
+  const users = [...(doctorsRes.data || []), ...(adminDoctorsRes.data || [])].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+  if (!users.length) return [];
+  const { data: settingsList, error: setError } = await supabase
+    .from('doctor_settings')
+    .select('doctor_id, consultation_fee, default_appointment_duration, allow_custom_duration')
+    .eq('clinic_id', clinicId)
+    .in('doctor_id', users.map((u) => u.id));
+  if (setError) throw setError;
+  const byDoctor = (settingsList || []).reduce((acc, s) => {
+    acc[s.doctor_id] = s;
+    return acc;
+  }, {});
+  return users.map((u) => ({
+    ...u,
+    consultation_fee: byDoctor[u.id]?.consultation_fee ?? 0,
+    doctor_settings_id: byDoctor[u.id] ? true : false,
+  }));
+};
+
 export const upsertDoctorSettings = async (doctorId, clinicId, settings) => {
+  const current = await getDoctorSettings(doctorId);
+  const consultationFee = settings.consultation_fee !== undefined
+    ? Math.max(0, Number(settings.consultation_fee))
+    : (current?.consultation_fee ?? 0);
   const { data, error } = await supabase
     .from('doctor_settings')
     .upsert({
@@ -539,12 +762,23 @@ export const upsertDoctorSettings = async (doctorId, clinicId, settings) => {
       clinic_id: clinicId,
       default_appointment_duration: Math.min(60, Math.max(15, settings.default_appointment_duration ?? 30)),
       allow_custom_duration: settings.allow_custom_duration !== false,
+      consultation_fee: consultationFee,
     }, { onConflict: 'doctor_id' })
     .select()
     .single();
 
   if (error) throw error;
   return data;
+};
+
+/** Clinic admin sets a doctor's consultation fee. Preserves existing duration/allow_custom. */
+export const setDoctorConsultationFee = async (doctorId, clinicId, fee) => {
+  const current = await getDoctorSettings(doctorId);
+  return upsertDoctorSettings(doctorId, clinicId, {
+    default_appointment_duration: current?.default_appointment_duration ?? 30,
+    allow_custom_duration: current?.allow_custom_duration !== false,
+    consultation_fee: Math.max(0, Number(fee)),
+  });
 };
 
 export const getDoctorHolidays = async (doctorId) => {
